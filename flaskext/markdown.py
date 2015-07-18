@@ -6,8 +6,17 @@ flaskext.markdown
 Markdown filter class for Flask
 To use::
 
+    app = Flask(__name__)
     from flaskext.markdown import Markdown
     md = Markdown(app)
+
+The second possibility is to create the object once and configure the
+application later to support it::
+    md = Markdown()
+    def create_app():
+        app = Flask(__name__)
+        md.init_app(app)
+        return app
 
 Then in your template::
 
@@ -68,12 +77,23 @@ class Markdown(object):
     :param markdown_options: Keyword args for the Markdown instance
     """
 
-    def __init__(self, app, auto_escape=False, **markdown_options):
+    def __init__(self, app=None, auto_escape=False, **markdown_options):
         """Markdown uses old style classes"""
         self.auto_escape = auto_escape
         self._instance = md.Markdown(**markdown_options)
+        if app is not None:
+            self.init_app(app)
+
+    def init_app(self, app):
+        """This callback can be used to initialize an application for the
+        use with this markdon setup.
+        """
         app.jinja_env.filters.setdefault(
             'markdown', self.__build_filter(self.auto_escape))
+
+        if not hasattr(app, 'extensions'):
+            app.extensions = {}
+        app.extensions['markdown'] = self
 
     def __call__(self, stream):
         return Markup(self._instance.convert(stream))
